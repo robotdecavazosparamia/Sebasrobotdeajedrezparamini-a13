@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>chebi – Stockfish REAL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- Chessboard & Chess.js -->
+<link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+<script src="https://unpkg.com/chess.js@1.0.0/chess.min.js"></script>
+<script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  background:radial-gradient(circle at top,#222,#000);
+  color:#fff;
+  font-family:system-ui,Arial;
+  display:flex;
+  justify-content:center;
+}
+.app{
+  max-width:420px;
+  width:100%;
+  padding:12px;
+}
+h1{
+  text-align:center;
+  margin:6px 0 10px;
+  letter-spacing:1px;
+}
+#board{
+  width:100%;
+  border-radius:14px;
+  box-shadow:0 10px 40px rgba(0,0,0,.8);
+  overflow:hidden;
+}
+.info{
+  text-align:center;
+  margin-top:8px;
+  font-size:14px;
+  opacity:.85;
+}
+button{
+  width:100%;
+  margin-top:10px;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  font-size:16px;
+  background:linear-gradient(135deg,#ffcc00,#ff9900);
+  font-weight:700;
+}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>♟️ chebi + Stockfish</h1>
+<div id="board"></div>
+<div class="info" id="info">Stockfish pensando…</div>
+<button onclick="resetGame()">Nueva partida</button>
+</div>
+
+<script>
+// ============================
+// STOCKFISH REAL (WASM)
+// ============================
+
+const game = new Chess();
+
+const board = Chessboard('board', {
+  draggable: true,
+  position: 'start',
+  onDrop: onDrop,
+  pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+});
+
+// Cargar Stockfish REAL
+const engine = new Worker('https://cdn.jsdelivr.net/npm/stockfish@16.1.0/src/stockfish.js');
+engine.postMessage('uci');
+engine.postMessage('isready');
+engine.postMessage('setoption name Skill Level value 10');
+
+engine.onmessage = (e) => {
+  const line = e.data;
+  if (line.startsWith('bestmove')) {
+    const move = line.split(' ')[1];
+    game.move({ from: move.slice(0,2), to: move.slice(2,4), promotion: 'q' });
+    board.position(game.fen());
+    document.getElementById('info').textContent = 'Tu turno';
+  }
+};
+
+function onDrop(source, target) {
+  const move = game.move({ from: source, to: target, promotion: 'q' });
+  if (move === null) return 'snapback';
+
+  document.getElementById('info').textContent = 'Stockfish pensando…';
+  engine.postMessage('position fen ' + game.fen());
+  engine.postMessage('go depth 15');
+}
+
+function resetGame(){
+  game.reset();
+  board.start();
+}
+</script>
+</body>
+</html>
